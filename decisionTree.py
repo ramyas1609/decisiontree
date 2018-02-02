@@ -6,17 +6,21 @@ class Node:
         self.data_points = []
         self.left = None
         self.right = None
+        self.attribute = None
+        self.left_return_label = None
+        self.right_return_label = None
 
 
 class Tree:
-    def __init__(self):
+    def __init__(self, max_depth):
         self.attributes_names = []
         self.attributes_values = []
         self.label_name = "None"
         self.label_values = []
-        self.attribute_values_unique = []
+        self.attribute_values_unique = {}
         self.label_values_unique = []
         self.root = Node()
+        self.max_depth = max_depth
 
     def read_csv(self, csv_file):
 
@@ -39,15 +43,15 @@ class Tree:
             if len(self.label_values_unique) == 2:
                 break
 
-        for row in self.attributes_values:
-            for attr_value in row:
-                if attr_value not in self.attribute_values_unique:
-                    self.attribute_values_unique.append(attr_value)
-                if len(self.attribute_values_unique) == 2:
-                    break
-            if len(self.attribute_values_unique) == 2:
-                break
+        for attr in self.attributes_names:
+            if not self.attribute_values_unique.has_key(attr):
+                self.attribute_values_unique[attr] = []
 
+        for row in self.attributes_values:
+            for i in range(0, len(self.attributes_names)):
+                    attr_value = row[i]
+                    if attr_value not in self.attribute_values_unique[self.attributes_names[i]]:
+                        self.attribute_values_unique[self.attributes_names[i]].append(attr_value)
         #print self.attributes_names
         #print self.attributes_values
         #print self.label_name
@@ -89,7 +93,7 @@ class Tree:
         datapoints_x1 = []
         for i in node.data_points:
             attr_value = self.attributes_values[i][col]
-            if attr_value == self.attribute_values_unique[0]:
+            if attr_value == self.attribute_values_unique[attr][0]:
                 x0 = x0 + 1
                 datapoints_x0.append(i)
                 label_value = self.label_values[i]
@@ -97,7 +101,7 @@ class Tree:
                     x00 = x00 + 1
                 elif label_value == self.label_values_unique[1]:
                     x01 = x01 + 1
-            elif attr_value == self.attribute_values_unique[1]:
+            elif attr_value == self.attribute_values_unique[attr][1]:
                 x1 = x1 + 1
                 datapoints_x1.append(i)
                 label_value = self.label_values[i]
@@ -125,7 +129,9 @@ class Tree:
         distribution = [datapoints_x0, x00, x01, datapoints_x1, x10, x11]
         return hofy_given_x, distribution
 
-    def construct_tree(self, node):
+    def construct_tree(self, node, depth):
+        if depth > int(self.max_depth):
+            return
         max_mutual_info = 0.0
         max_attr = None
         max_distr = []
@@ -137,46 +143,77 @@ class Tree:
                 max_mutual_info = mutual_info
                 max_attr = attr
                 max_distr = distribution
-        print max_distr, max_attr
+
+        if max_mutual_info == 0.0:
+            return
+        #else:
+            #print max_attr, max_distr[1], max_distr[2], max_distr[4], max_distr[5]
+
+        node.attribute = max_attr
+
+        node_right = Node()
+        node.right = node_right
+        node_right.data_points = max_distr[0]
 
         node_left = Node()
         node.left = node_left
-        node_left.data_points = max_distr[0]
-        node_right = Node()
-        node.right = node_right
-        node_right.data_points = max_distr[3]
+        node_left.data_points = max_distr[3]
+
+        if max_distr[1] == 0 or max_distr[2] == 0:
+            if max_distr[1] == 0:
+                index = 1
+            if max_distr[2] == 0:
+                index = 0
+            node.right_return_label = self.label_values_unique[index]
+        if max_distr[4] == 0 or max_distr[5] == 0:
+            if max_distr[4] == 0:
+                index = 1
+            if max_distr[5] == 0:
+                index = 0
+            node.left_return_label = self.label_values_unique[index]
 
         if (max_distr[1] == 0 or max_distr[2] == 0) and (max_distr[4] == 0 or max_distr[5] == 0):
             return
 
         if max_distr[1] == 0 or max_distr[2] == 0:
-            self.construct_tree(node_right)
+            self.construct_tree(node_left, depth+1)
         elif max_distr[4] == 0 or max_distr[5] == 0:
-            self.construct_tree(node_left)
+            self.construct_tree(node_right, depth+1)
         else:
-            self.construct_tree(node_left)
-            self.construct_tree(node_right)
+            self.construct_tree(node_right, depth+1)
+            self.construct_tree(node_left, depth+1)
+
+    def majority_vote_classifier(self):
+        x = 0
+        y = 0
+        for label in self.label_values:
+            if label == self.label_values_unique[0]:
+                x = x + 1
+            elif label == self.label_values_unique[1]:
+                y = y + 1
+            if x > y:
+                index = 0
+            else:
+                index = 1
+            majority_vote = self.label_values_unique[index]
+            return majority_vote
+
+    def print_tree(self, node):
+        if node is None:
+            return
+        self.print_tree(node.right)
+        print node.attribute, node.right_return_label, node.left_return_label
+        self.print_tree(node.left)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-t = Tree()
+max_depth = sys.argv[2]
+t = Tree(max_depth)
 t.read_csv(sys.argv[1])
-t.calculate_hofy(t.root)
-t.calculate_hofy_given_x(t.root,"A")
-t.construct_tree(t.root)
+if max_depth == 0:
+    t.majority_vote_classifier()
+else:
+    t.construct_tree(t.root, 0)
+t.print_tree(t.root)
 
 
 
