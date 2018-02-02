@@ -131,7 +131,7 @@ class Tree:
 
     def construct_tree(self, node, depth):
         if depth > int(self.max_depth):
-            return
+            return 0
         max_mutual_info = 0.0
         max_attr = None
         max_distr = []
@@ -145,7 +145,7 @@ class Tree:
                 max_distr = distribution
 
         if max_mutual_info == 0.0:
-            return
+            return 1
         #else:
             #print max_attr, max_distr[1], max_distr[2], max_distr[4], max_distr[5]
 
@@ -173,17 +173,17 @@ class Tree:
             node.left_return_label = self.label_values_unique[index]
 
         if (max_distr[1] == 0 or max_distr[2] == 0) and (max_distr[4] == 0 or max_distr[5] == 0):
-            return
+            return 2
 
         if max_distr[1] == 0 or max_distr[2] == 0:
-            self.construct_tree(node_left, depth+1)
+            ret = self.construct_tree(node_left, depth+1)
         elif max_distr[4] == 0 or max_distr[5] == 0:
-            self.construct_tree(node_right, depth+1)
+            ret = self.construct_tree(node_right, depth+1)
         else:
-            self.construct_tree(node_right, depth+1)
-            self.construct_tree(node_left, depth+1)
+            ret = self.construct_tree(node_right, depth+1)
+            ret = self.construct_tree(node_left, depth+1)
 
-    def majority_vote_classifier(self):
+    def majority_vote_classifier(self, out_filename):
         x = 0
         y = 0
         for label in self.label_values:
@@ -196,7 +196,12 @@ class Tree:
             else:
                 index = 1
             majority_vote = self.label_values_unique[index]
-            return majority_vote
+
+        out_file = open(out_filename, "w")
+
+        for i in range(0, len(self.label_values)):
+            out_file.write(majority_vote)
+            out_file.write("\n")
 
     def print_tree(self, node):
         if node is None:
@@ -205,15 +210,59 @@ class Tree:
         print node.attribute, node.right_return_label, node.left_return_label
         self.print_tree(node.left)
 
+    def write_label_out(self, in_filename, out_filename):
 
-max_depth = sys.argv[2]
+        if max_depth == 0:
+            self.majority_vote_classifier()
+
+        input_file = open(in_filename, "r")
+        line_number = 1
+
+        for line in input_file.readlines():
+            data = line.split(",")
+            if line_number == 1:
+                line_number = line_number + 1
+                attr_names = data[0:-1]
+                continue
+            else:
+                attr_values = data[0:-1]
+                ground_truth = data[-1]
+                predicted_label = None
+                stack = []
+                current = self.root
+                done = 0
+
+                while not current:
+
+                    attr = current.attribute
+                    attr_value = attr_values[attr_names.index(attr)]
+                    if attr_value == self.attribute_values_unique[attr][0]:
+                        if current.right_return_label:
+                            predicted_label = current.right_return_label
+                        else:
+                            current = current.right
+                    elif attr_value == self.attribute_values_unique[attr][0]:
+                        if current.left_return_label:
+                            predicted_label = current.left_return_label
+                        else:
+                            current = current.left
+        print predicted_label
+        input_file.close()
+
+
+train_in_file = sys.argv[1] #1 - train.csv
+max_depth = sys.argv[3]  #3 - depth
 t = Tree(max_depth)
-t.read_csv(sys.argv[1])
-if max_depth == 0:
-    t.majority_vote_classifier()
-else:
-    t.construct_tree(t.root, 0)
+t.read_csv(train_in_file)
+
+t.construct_tree(t.root, 0)
 t.print_tree(t.root)
+
+train_out_filename = sys.argv[4]
+test_out_filename = sys.argv[5]
+
+t.write_label_out(train_in_file, train_out_filename)
+
 
 
 
