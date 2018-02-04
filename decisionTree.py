@@ -22,9 +22,9 @@ class Tree:
         self.root = Node()
         self.max_depth = max_depth
 
-    def read_csv(self, csv_file):
+    def read_csv(self, input_filename):
 
-        input_file = open(csv_file, "r")
+        input_file = open(input_filename, "r")
         line_number = 1
 
         for line in input_file.readlines():
@@ -129,35 +129,42 @@ class Tree:
         distribution = [datapoints_x0, x00, x01, datapoints_x1, x10, x11]
         return hofy_given_x, distribution
 
-    def construct_tree(self, node, depth):
+    def construct_tree(self, node, depth, parent_attr):
+
         if depth > int(self.max_depth):
-            return 0
+            #print ("Max Depth")
+            return
+
         max_mutual_info = 0.0
         max_attr = None
         max_distr = []
         hofy = self.calculate_hofy(node)
         for attr in self.attributes_names:
+            if attr in parent_attr:
+                continue
             hofy_given_x, distribution = self.calculate_hofy_given_x(node, attr)
             mutual_info = hofy - hofy_given_x
-            if mutual_info > max_mutual_info:
+            if mutual_info >= max_mutual_info:
                 max_mutual_info = mutual_info
                 max_attr = attr
                 max_distr = distribution
 
-        if max_mutual_info == 0.0:
-            return 1
+        if max_mutual_info < 0.0:
+            #print ("Zero Mutual Info")
+            return
         #else:
-            #print max_attr, max_distr[1], max_distr[2], max_distr[4], max_distr[5]
+            #print max_attr, max_distr
 
         node.attribute = max_attr
 
-        node_right = Node()
-        node.right = node_right
-        node_right.data_points = max_distr[0]
-
-        node_left = Node()
-        node.left = node_left
-        node_left.data_points = max_distr[3]
+        if max_distr[1] >= max_distr[2]:
+            node.right_return_label = self.label_values_unique[0]
+        else:
+            node.right_return_label = self.label_values_unique[1]
+        if max_distr[4] <= max_distr[5]:
+            node.left_return_label = self.label_values_unique[1]
+        else:
+            node.left_return_label = self.label_values_unique[0]
 
         if max_distr[1] == 0 or max_distr[2] == 0:
             if max_distr[1] == 0:
@@ -172,16 +179,25 @@ class Tree:
                 index = 0
             node.left_return_label = self.label_values_unique[index]
 
+        node_right = Node()
+        node_right.data_points = max_distr[0]
+        node_left = Node()
+        node_left.data_points = max_distr[3]
+
         if (max_distr[1] == 0 or max_distr[2] == 0) and (max_distr[4] == 0 or max_distr[5] == 0):
-            return 2
+            return
 
         if max_distr[1] == 0 or max_distr[2] == 0:
-            ret = self.construct_tree(node_left, depth+1)
+            node.right = None
+            self.construct_tree(node_left, depth+1, max_attr)
         elif max_distr[4] == 0 or max_distr[5] == 0:
-            ret = self.construct_tree(node_right, depth+1)
+            node.left = None
+            self.construct_tree(node_right, depth+1, max_attr)
         else:
-            ret = self.construct_tree(node_right, depth+1)
-            ret = self.construct_tree(node_left, depth+1)
+            node.right = node_right
+            self.construct_tree(node_right, depth+1, max_attr)
+            node.left = node_left
+            self.construct_tree(node_left, depth+1, max_attr)
 
     def majority_vote_classifier(self, out_filename):
         x = 0
@@ -191,11 +207,11 @@ class Tree:
                 x = x + 1
             elif label == self.label_values_unique[1]:
                 y = y + 1
-            if x > y:
-                index = 0
-            else:
-                index = 1
-            majority_vote = self.label_values_unique[index]
+        if x > y:
+            index = 0
+        else:
+            index = 1
+        majority_vote = self.label_values_unique[index]
 
         out_file = open(out_filename, "w")
 
@@ -203,65 +219,96 @@ class Tree:
             out_file.write(majority_vote)
             out_file.write("\n")
 
+        error = min(x,y)
+
+        return error
+
     def print_tree(self, node):
         if node is None:
             return
         self.print_tree(node.right)
-        print node.attribute, node.right_return_label, node.left_return_label
+        print node.attribute, node.right, node.right_return_label, node.left, node.left_return_label
         self.print_tree(node.left)
 
-    def write_label_out(self, in_filename, out_filename):
+    def write_label_file(self, in_filename, out_filename):
 
-        if max_depth == 0:
-            self.majority_vote_classifier()
+        if self.max_depth == 0:
+            error = self.majority_vote_classifier(out_filename)
+            return error
 
         input_file = open(in_filename, "r")
         line_number = 1
+        out_file = open(out_filename, "w")
+
+        errors = 0
 
         for line in input_file.readlines():
             data = line.split(",")
             if line_number == 1:
                 line_number = line_number + 1
                 attr_names = data[0:-1]
-                continue
             else:
                 attr_values = data[0:-1]
-                ground_truth = data[-1]
-                predicted_label = None
-                stack = []
+                ground_truth = data[-1].rstrip()
+                predicted_label = ""
                 current = self.root
-                done = 0
 
-                while not current:
-
+                while current:
                     attr = current.attribute
                     attr_value = attr_values[attr_names.index(attr)]
+
+                    #print attr, attr_value
                     if attr_value == self.attribute_values_unique[attr][0]:
-                        if current.right_return_label:
+                        if current.right is None and current.left is None:
                             predicted_label = current.right_return_label
+                            break
                         else:
                             current = current.right
-                    elif attr_value == self.attribute_values_unique[attr][0]:
-                        if current.left_return_label:
+                    elif attr_value == self.attribute_values_unique[attr][1]:
+                        if current.right is None and current.left is None:
                             predicted_label = current.left_return_label
+                            break
                         else:
                             current = current.left
-        print predicted_label
+                #print predicted_label
+                if str(predicted_label) != str(ground_truth):
+                    errors = errors + 1
+
+                out_file.write(predicted_label+"\n")
+
         input_file.close()
+        out_file.close()
+        return errors
+
+    def write_error_file(self, metrics_file_name, train_error, test_error):
+
+        out_file = open(metrics_file_name, "w")
+        total = len(self.label_values)
+        train_error_1 = (train_error * 1.0) / total
+        test_error_1 = (test_error * 1.0) / total
+
+        out_file.write("error(train) : " + str(train_error_1) + "\n")
+        out_file.write("error(test) : " + str(test_error_1) + "\n")
+
+        out_file.close()
 
 
-train_in_file = sys.argv[1] #1 - train.csv
-max_depth = sys.argv[3]  #3 - depth
-t = Tree(max_depth)
-t.read_csv(train_in_file)
+train_in_filename = sys.argv[1] #1 - train.csv
+tree_max_depth = sys.argv[3]  #3 - depth
+t = Tree(tree_max_depth)
+t.read_csv(train_in_filename)
 
-t.construct_tree(t.root, 0)
-t.print_tree(t.root)
+t.construct_tree(t.root, 0, "")
+#t.print_tree(t.root)
+
+test_in_filename = sys.argv[2]
+test_out_filename = sys.argv[5]
+test_error_samples = t.write_label_file(test_in_filename, test_out_filename)
 
 train_out_filename = sys.argv[4]
-test_out_filename = sys.argv[5]
+train_error_samples = t.write_label_file(train_in_filename, train_out_filename)
 
-t.write_label_out(train_in_file, train_out_filename)
+t.write_error_file(sys.argv[6], train_error_samples, test_error_samples)
 
 
 
