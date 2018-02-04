@@ -132,7 +132,7 @@ class Tree:
     def construct_tree(self, node, depth, parent_attr):
 
         if depth > int(self.max_depth):
-            #print ("Max Depth")
+            #print ("Max Depth"), depth
             return
 
         max_mutual_info = 0.0
@@ -149,7 +149,7 @@ class Tree:
                 max_attr = attr
                 max_distr = distribution
 
-        if max_mutual_info < 0.0:
+        if max_mutual_info <= 0.0:
             #print ("Zero Mutual Info")
             return
         #else:
@@ -189,15 +189,15 @@ class Tree:
 
         if max_distr[1] == 0 or max_distr[2] == 0:
             node.right = None
-            self.construct_tree(node_left, depth+1, max_attr)
+            self.construct_tree(node_left, depth + 1, max_attr)
         elif max_distr[4] == 0 or max_distr[5] == 0:
             node.left = None
-            self.construct_tree(node_right, depth+1, max_attr)
+            self.construct_tree(node_right, depth + 1, max_attr)
         else:
             node.right = node_right
-            self.construct_tree(node_right, depth+1, max_attr)
+            self.construct_tree(node_right, depth + 1, max_attr)
             node.left = node_left
-            self.construct_tree(node_left, depth+1, max_attr)
+            self.construct_tree(node_left, depth + 1, max_attr)
 
     def majority_vote_classifier(self, out_filename):
         x = 0
@@ -227,12 +227,12 @@ class Tree:
         if node is None:
             return
         self.print_tree(node.right)
-        print node.attribute, node.right, node.right_return_label, node.left, node.left_return_label
+        print node, node.attribute, node.right, node.right_return_label, node.left, node.left_return_label
         self.print_tree(node.left)
 
     def write_label_file(self, in_filename, out_filename):
 
-        if self.max_depth == 0:
+        if int(self.max_depth) == 0:
             error = self.majority_vote_classifier(out_filename)
             return error
 
@@ -262,10 +262,16 @@ class Tree:
                         if current.right is None and current.left is None:
                             predicted_label = current.right_return_label
                             break
+                        elif current.right.attribute is None:
+                            predicted_label = current.right_return_label
+                            break
                         else:
                             current = current.right
                     elif attr_value == self.attribute_values_unique[attr][1]:
                         if current.right is None and current.left is None:
+                            predicted_label = current.left_return_label
+                            break
+                        elif current.left.attribute is None:
                             predicted_label = current.left_return_label
                             break
                         else:
@@ -298,7 +304,7 @@ tree_max_depth = sys.argv[3]  #3 - depth
 t = Tree(tree_max_depth)
 t.read_csv(train_in_filename)
 
-t.construct_tree(t.root, 0, "")
+t.construct_tree(t.root, 1, "")
 #t.print_tree(t.root)
 
 test_in_filename = sys.argv[2]
