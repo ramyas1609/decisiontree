@@ -237,15 +237,14 @@ class Tree:
             return error
 
         input_file = open(in_filename, "r")
-        line_number = 1
+        samples = 0
         out_file = open(out_filename, "w")
 
         errors = 0
 
         for line in input_file.readlines():
             data = line.split(",")
-            if line_number == 1:
-                line_number = line_number + 1
+            if samples == 0:
                 attr_names = data[0:-1]
             else:
                 attr_values = data[0:-1]
@@ -281,17 +280,17 @@ class Tree:
                     errors = errors + 1
 
                 out_file.write(predicted_label+"\n")
+            samples = samples + 1
 
         input_file.close()
         out_file.close()
-        return errors
+        return errors, samples
 
-    def write_error_file(self, metrics_file_name, train_error, test_error):
+    def write_error_file(self, metrics_file_name, train_error, train_total, test_error, test_total):
 
         out_file = open(metrics_file_name, "w")
-        total = len(self.label_values)
-        train_error_1 = (train_error * 1.0) / total
-        test_error_1 = (test_error * 1.0) / total
+        train_error_1 = (train_error * 1.0) / (train_total - 1)
+        test_error_1 = (test_error * 1.0) / (test_total - 1)
 
         out_file.write("error(train) : " + str(train_error_1) + "\n")
         out_file.write("error(test) : " + str(test_error_1) + "\n")
@@ -309,12 +308,12 @@ t.construct_tree(t.root, 1, "")
 
 test_in_filename = sys.argv[2]
 test_out_filename = sys.argv[5]
-test_error_samples = t.write_label_file(test_in_filename, test_out_filename)
+test_error_samples, test_total = t.write_label_file(test_in_filename, test_out_filename)
 
 train_out_filename = sys.argv[4]
-train_error_samples = t.write_label_file(train_in_filename, train_out_filename)
+train_error_samples, train_total = t.write_label_file(train_in_filename, train_out_filename)
 
-t.write_error_file(sys.argv[6], train_error_samples, test_error_samples)
+t.write_error_file(sys.argv[6], train_error_samples, train_total, test_error_samples, test_total)
 
 
 
