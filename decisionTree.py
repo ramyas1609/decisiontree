@@ -130,12 +130,12 @@ class Tree:
         return hofy_given_x, distribution
 
     def construct_tree(self, node, depth, parent_attr):
-
+        print depth
         if depth > int(self.max_depth):
             #print ("Max Depth"), depth
             return
 
-        max_mutual_info = 0.0
+        max_mutual_info = -1.0
         max_attr = None
         max_distr = []
         hofy = self.calculate_hofy(node)
@@ -150,13 +150,14 @@ class Tree:
                 max_distr = distribution
 
         if max_mutual_info <= 0.0:
-            #print ("Zero Mutual Info")
+            print ("Zero Mutual Info")
             return
-        #else:
-            #print max_attr, max_distr
+        else:
+            print max_attr, max_distr[1], max_distr[2], max_distr[4], max_distr[5]
 
         node.attribute = max_attr
 
+        #calculate majority vote
         if max_distr[1] >= max_distr[2]:
             node.right_return_label = self.label_values_unique[0]
         else:
@@ -181,22 +182,22 @@ class Tree:
 
         node_right = Node()
         node_right.data_points = max_distr[0]
+        node.right = node_right
         node_left = Node()
+        node.left = node_left
         node_left.data_points = max_distr[3]
 
         if (max_distr[1] == 0 or max_distr[2] == 0) and (max_distr[4] == 0 or max_distr[5] == 0):
             return
 
         if max_distr[1] == 0 or max_distr[2] == 0:
-            node.right = None
+            #node.right = None
             self.construct_tree(node_left, depth + 1, max_attr)
         elif max_distr[4] == 0 or max_distr[5] == 0:
-            node.left = None
+            #node.left = None
             self.construct_tree(node_right, depth + 1, max_attr)
         else:
-            node.right = node_right
             self.construct_tree(node_right, depth + 1, max_attr)
-            node.left = node_left
             self.construct_tree(node_left, depth + 1, max_attr)
 
     def majority_vote_classifier(self, out_filename):
@@ -303,7 +304,7 @@ t = Tree(tree_max_depth)
 t.read_csv(train_in_filename)
 
 t.construct_tree(t.root, 1, "")
-#t.print_tree(t.root)
+t.print_tree(t.root)
 
 test_in_filename = sys.argv[2]
 test_out_filename = sys.argv[5]
