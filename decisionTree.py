@@ -114,7 +114,7 @@ class Tree:
         #else:
             #print x0, x00, x01, x1, x10, x11
         if x00 == 0 or x01 == 0:
-           t01 = 0
+            t01 = 0
         else:
             t0 = (x00 * 1.0 / x0)
             t1 = (x01 * 1.0 / x0)
@@ -161,7 +161,7 @@ class Tree:
             node.right_return_label = self.label_values_unique[0]
         else:
             node.right_return_label = self.label_values_unique[1]
-        if max_distr[4] <= max_distr[5]:
+        if max_distr[4] < max_distr[5]:
             node.left_return_label = self.label_values_unique[1]
         else:
             node.left_return_label = self.label_values_unique[0]
@@ -207,7 +207,7 @@ class Tree:
                 x = x + 1
             elif label == self.label_values_unique[1]:
                 y = y + 1
-        if x > y:
+        if x >= y:
             index = 0
         else:
             index = 1
@@ -219,9 +219,9 @@ class Tree:
             out_file.write(majority_vote)
             out_file.write("\n")
 
-        error = min(x,y)
+        error = min(x, y)
 
-        return error
+        return error, x + y
 
     def print_tree(self, node):
         if node is None:
@@ -233,8 +233,7 @@ class Tree:
     def write_label_file(self, in_filename, out_filename):
 
         if int(self.max_depth) == 0:
-            error = self.majority_vote_classifier(out_filename)
-            return error
+            return self.majority_vote_classifier(out_filename)
 
         input_file = open(in_filename, "r")
         samples = 0
@@ -314,10 +313,3 @@ train_out_filename = sys.argv[4]
 train_error_samples, train_total = t.write_label_file(train_in_filename, train_out_filename)
 
 t.write_error_file(sys.argv[6], train_error_samples, train_total, test_error_samples, test_total)
-
-
-
-
-
-
-
