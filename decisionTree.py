@@ -9,6 +9,7 @@ class Node:
         self.attribute = None
         self.left_return_label = None
         self.right_return_label = None
+        self.distr = None
 
 
 class Tree:
@@ -111,8 +112,6 @@ class Tree:
                     x11 = x11 + 1
         #if (x0 + x1 != x) or (x00 + x01 != x0) or (x10 + x11 != x1):
             #print ("Something wrong")
-        #else:
-            #print x0, x00, x01, x1, x10, x11
         if x00 == 0 or x01 == 0:
             t01 = 0
         else:
@@ -130,11 +129,9 @@ class Tree:
         return hofy_given_x, distribution
 
     def construct_tree(self, node, depth, parent_attr):
-        print depth
         if depth > int(self.max_depth):
-            #print ("Max Depth"), depth
+            #print ("Max Depth")
             return
-
         max_mutual_info = -1.0
         max_attr = None
         max_distr = []
@@ -150,12 +147,11 @@ class Tree:
                 max_distr = distribution
 
         if max_mutual_info <= 0.0:
-            print ("Zero Mutual Info")
+            #print ("Zero Mutual Info")
             return
-        else:
-            print max_attr, max_distr[1], max_distr[2], max_distr[4], max_distr[5]
 
         node.attribute = max_attr
+        node.distr = max_distr
 
         #calculate majority vote
         if max_distr[1] >= max_distr[2]:
@@ -191,10 +187,8 @@ class Tree:
             return
 
         if max_distr[1] == 0 or max_distr[2] == 0:
-            #node.right = None
             self.construct_tree(node_left, depth + 1, max_attr)
         elif max_distr[4] == 0 or max_distr[5] == 0:
-            #node.left = None
             self.construct_tree(node_right, depth + 1, max_attr)
         else:
             self.construct_tree(node_right, depth + 1, max_attr)
@@ -228,7 +222,7 @@ class Tree:
         if node is None:
             return
         self.print_tree(node.right)
-        print node, node.attribute, node.right, node.right_return_label, node.left, node.left_return_label
+        print node, node.attribute, node.right, node.right_return_label, node.left, node.left_return_label, node.distr
         self.print_tree(node.left)
 
     def write_label_file(self, in_filename, out_filename):
@@ -256,7 +250,6 @@ class Tree:
                     attr = current.attribute
                     attr_value = attr_values[attr_names.index(attr)]
 
-                    #print attr, attr_value
                     if attr_value == self.attribute_values_unique[attr][0]:
                         if current.right is None and current.left is None:
                             predicted_label = current.right_return_label
